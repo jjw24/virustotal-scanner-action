@@ -70,3 +70,28 @@ class VTClient:
         elapsed = time.monotonic() - self._last_request
         if elapsed < self._interval:
             time.sleep(self._interval - elapsed)
+
+    @retry(
+        retry=retry_if_exception(_is_retryable),
+        stop=stop_after_attempt(6),
+        wait=_wait_retry,
+        reraise=True,
+    )
+    def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
+        """Send an authenticated request to the VirusTotal API.
+
+        Args:
+            method: HTTP method (e.g. ``"GET"``, ``"POST"``).
+            path: URL path relative to the API base (e.g. ``/files/{id}``).
+            **kwargs: Additional arguments forwarded to ``requests.Session.request``.
+
+        Returns:
+            The server response.
+        """
+        self._throttle()
+        url = f"{VT_API_BASE}{path}"
+        resp = self._session.request(method, url, **kwargs)
+        self._last_request = time.monotonic()
+        if resp.status_code >= 400:
+            resp.raise_for_status()
+        return resp

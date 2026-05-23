@@ -136,3 +136,24 @@ class TestVTClient(unittest.TestCase):
         with patch("time.monotonic", return_value=15.0), patch("time.sleep") as mock_sleep:
             self.client._throttle()
         mock_sleep.assert_not_called()
+
+    # -- request --
+
+    @patch("time.sleep")
+    def test_sends_authenticated_request(self, mock_sleep):
+        resp = _mock_http_resp(200)
+        self.mock_request.return_value = resp
+        with patch("time.monotonic", return_value=10.0):
+            result = self.client._request("GET", "/files/abc")
+        self.mock_request.assert_called_once_with(
+            "GET", "https://www.virustotal.com/api/v3/files/abc"
+        )
+        assert result is resp
+
+    @patch("time.sleep")
+    def test_request_raises_on_http_error(self, mock_sleep):
+        resp = _mock_http_resp(404)
+        self.mock_request.return_value = resp
+        with patch("time.monotonic", return_value=10.0):
+            with pytest.raises(requests.HTTPError):
+                self.client._request("GET", "/files/abc")
