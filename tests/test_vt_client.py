@@ -231,3 +231,41 @@ class TestVTClient(unittest.TestCase):
         with patch("time.monotonic", side_effect=[100.0, 100.0, 100.0, 100.0]):
             with pytest.raises(TimeoutError, match="polls="):
                 self.client.wait_for_analysis("id-123")
+
+    # -- scan_file --
+
+    @patch.object(VTClient, 'get_file_report')
+    @patch("virustotal_scan.vt_client.sha256_file", return_value="abc")
+    @patch("time.sleep")
+    def test_scan_uses_vt_cached_report_when_hash_exists(self, mock_sleep, mock_sha256, mock_gfr):
+        mock_gfr.return_value = {
+            "data": {
+                "attributes": {
+                    "last_analysis_stats": {"malicious": 0, "suspicious": 0},
+                    "last_analysis_results": {"EngineA": {"category": "undetected"}},
+                }
+            }
+        }
+        with patch.object(self.client, 'upload_file') as mock_uf:
+            stats, sha, _ = self.client.scan_file(Path("/fake/path"))
+        assert stats == {"malicious": 0, "suspicious": 0}
+        assert sha == "abc"
+        mock_uf.assert_not_called()
+
+    @patch.object(VTClient, 'get_file_report')
+    @patch("virustotal_scan.vt_client.sha256_file", return_value="abc")
+    @patch("time.sleep")
+    def test_scan_uploads_when_vt_cached_report_missing(self, mock_sleep, mock_sha256, mock_gfr):
+        missing = requests.Response()
+        missing.status_code = 404
+        mock_gfr.side_effect = requests.HTTPError(response=missing)
+        analysis_data = {
+            "attributes": {
+                "stats": {"malicious": 1, "suspicious": 0},
+            }
+        }
+        with patch.object(self.client, 'upload_file', return_value="id-456"):
+            with patch.object(self.client, 'wait_for_analysis', return_value=analysis_data):
+                stats, sha, _ = self.client.scan_file(Path("/fake/path"))
+        assert stats == {"malicious": 1, "suspicious": 0}
+        assert sha == "abc"

@@ -170,3 +170,34 @@ class VTClient:
                 raise RuntimeError(f"analysis failed: {analysis_id}")
             time.sleep(min(30, self._interval))
         raise TimeoutError(f"polls={polls} last_status={status}")
+
+    def scan_file(self, file_path: Path) -> tuple[dict[str, Any], str, dict[str, Any]]:
+        """Scan a file, returning stats, SHA-256, and analysis data.
+
+        If the file hash already exists on VirusTotal, the cached report
+        is returned without re-uploading.
+
+        Args:
+            file_path: Path to the file to scan.
+
+        Returns:
+            A tuple of ``(stats_dict, sha256_hex, analysis_data)``.
+        """
+        sha = sha256_file(file_path)
+
+        try:
+            file_report = self.get_file_report(sha)
+            last_analysis = file_report.get("data", {}).get("attributes", {}).get("last_analysis_results", {})
+            stats = file_report.get("data", {}).get("attributes", {}).get("last_analysis_stats", {}) or {}
+            if stats:
+                analysis = {"attributes": {"results": last_analysis, "stats": stats}}
+                return stats, sha, analysis
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code != 404:
+                raise
+
+        analysis_id = self.upload_file(file_path)
+        analysis = self.wait_for_analysis(analysis_id)
+        stats = analysis["attributes"].get("stats") or {}
+        sha = analysis.get("meta", {}).get("file_info", {}).get("sha256") or sha
+        return stats, sha, analysis
