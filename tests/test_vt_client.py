@@ -1,3 +1,5 @@
+import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,7 +9,7 @@ from virustotal_scan.vt_client import VTClient, _is_retryable, _wait_retry
 
 
 # ------------------------------------------------------------------
-# _is_retryable
+# Helpers
 # ------------------------------------------------------------------
 
 def _make_resp(status_code: int) -> requests.Response:
@@ -15,6 +17,27 @@ def _make_resp(status_code: int) -> requests.Response:
     resp.status_code = status_code
     return resp
 
+
+def _mock_http_resp(status_code=200, json_data=None):
+    """Factory for creating mock requests.Response objects."""
+    resp = MagicMock(spec=requests.Response)
+    resp.status_code = status_code
+    if json_data is not None:
+        resp.json.return_value = json_data
+    if status_code >= 400:
+        resp.raise_for_status.side_effect = requests.HTTPError(response=resp)
+    return resp
+
+
+class MockRetryState:
+    def __init__(self, exception):
+        self.outcome = MagicMock()
+        self.outcome.exception.return_value = exception
+
+
+# ------------------------------------------------------------------
+# _is_retryable
+# ------------------------------------------------------------------
 
 class TestIsRetryable:
     @pytest.mark.parametrize("code", [429, 500, 502, 503])
@@ -42,12 +65,6 @@ class TestIsRetryable:
 # ------------------------------------------------------------------
 # _wait_retry
 # ------------------------------------------------------------------
-
-class MockRetryState:
-    def __init__(self, exception):
-        self.outcome = MagicMock()
-        self.outcome.exception.return_value = exception
-
 
 class TestWaitRetry:
     def test_uses_retry_after_header(self):
@@ -103,3 +120,19 @@ class TestVTClient(unittest.TestCase):
 
     def test_default_interval(self):
         assert self.client._interval == 15.0
+
+    # -- throttle --
+
+    def test_sleeps_when_below_interval(self):
+        self.client._last_request = 0.0
+        self.client._interval = 10.0
+        with patch("time.monotonic", return_value=5.0), patch("time.sleep") as mock_sleep:
+            self.client._throttle()
+        mock_sleep.assert_called_once_with(5.0)
+
+    def test_does_not_sleep_when_above_interval(self):
+        self.client._last_request = 0.0
+        self.client._interval = 10.0
+        with patch("time.monotonic", return_value=15.0), patch("time.sleep") as mock_sleep:
+            self.client._throttle()
+        mock_sleep.assert_not_called()

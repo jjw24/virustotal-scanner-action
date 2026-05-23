@@ -64,3 +64,9 @@ class VTClient:
         self._session.headers["x-apikey"] = api_key
         self._interval = env_float("VT_REQUEST_INTERVAL_SEC", 15.0)
         self._last_request = 0.0
+
+    def _throttle(self) -> None:
+        """Sleep if necessary to honour the configured request interval."""
+        elapsed = time.monotonic() - self._last_request
+        if elapsed < self._interval:
+            time.sleep(self._interval - elapsed)
