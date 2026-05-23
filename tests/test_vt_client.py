@@ -57,26 +57,26 @@ class TestWaitRetry:
         state = MockRetryState(exception)
         assert _wait_retry(state) == 42.0
 
-    def test_ignores_invalid_retry_after(self):
+    @patch("virustotal_scan.vt_client.wait_exponential")
+    def test_ignores_invalid_retry_after(self, mock_we):
         resp = _make_resp(429)
         resp.headers["Retry-After"] = "not-a-number"
         exception = requests.HTTPError(response=resp)
         state = MockRetryState(exception)
-        with patch("virustotal_scan.vt_client.wait_exponential") as mock_we:
-            mock_we.return_value.return_value = 15.0
-            assert _wait_retry(state) == 15.0
-            mock_we.assert_called_once_with(multiplier=2, min=15, max=120)
+        mock_we.return_value.return_value = 15.0
+        assert _wait_retry(state) == 15.0
+        mock_we.assert_called_once_with(multiplier=2, min=15, max=120)
 
-    def test_falls_back_when_no_header(self):
+    @patch("virustotal_scan.vt_client.wait_exponential")
+    def test_falls_back_when_no_header(self, mock_we):
         exception = requests.ConnectionError()
         state = MockRetryState(exception)
-        with patch("virustotal_scan.vt_client.wait_exponential") as mock_we:
-            mock_we.return_value.return_value = 30.0
-            assert _wait_retry(state) == 30.0
+        mock_we.return_value.return_value = 30.0
+        assert _wait_retry(state) == 30.0
 
-    def test_falls_back_when_no_response(self):
+    @patch("virustotal_scan.vt_client.wait_exponential")
+    def test_falls_back_when_no_response(self, mock_we):
         exception = requests.HTTPError(response=None)
         state = MockRetryState(exception)
-        with patch("virustotal_scan.vt_client.wait_exponential") as mock_we:
-            mock_we.return_value.return_value = 15.0
-            assert _wait_retry(state) == 15.0
+        mock_we.return_value.return_value = 15.0
+        assert _wait_retry(state) == 15.0
