@@ -50,3 +50,17 @@ def _wait_retry(retry_state) -> float:
                 pass
     return wait_exponential(multiplier=2, min=15, max=120)(retry_state)
 
+
+class VTClient:
+    """Client for the VirusTotal v3 API with throttling and retry logic."""
+
+    def __init__(self, api_key: str) -> None:
+        """Initialize the client with an API key.
+
+        Args:
+            api_key: A VirusTotal API key.
+        """
+        self._session = requests.Session()
+        self._session.headers["x-apikey"] = api_key
+        self._interval = env_float("VT_REQUEST_INTERVAL_SEC", 15.0)
+        self._last_request = 0.0
