@@ -95,3 +95,35 @@ class VTClient:
         if resp.status_code >= 400:
             resp.raise_for_status()
         return resp
+
+    def upload_file(self, file_path: Path) -> str:
+        """Upload a file to VirusTotal and return the analysis ID.
+
+        Files >= 32 MiB use the large-upload endpoint.
+
+        Args:
+            file_path: Path to the file to upload.
+
+        Returns:
+            The analysis ID assigned by VirusTotal.
+        """
+        size = file_path.stat().st_size
+        if size >= LARGE_FILE_BYTES:
+            upload_url = self._request("GET", "/files/upload_url").json()["data"]
+            with open(file_path, "rb") as f:
+                up = requests.post(
+                    upload_url,
+                    files={"file": (file_path.name, f)},
+                    headers={"x-apikey": self._session.headers["x-apikey"]},
+                    timeout=env_int("VT_DOWNLOAD_TIMEOUT_SEC", 120) * 2,
+                )
+            up.raise_for_status()
+            return up.json()["data"]["id"]
+        with open(file_path, "rb") as f:
+            resp = self._request(
+                "POST",
+                "/files",
+                files={"file": (file_path.name, f)},
+                timeout=env_int("VT_DOWNLOAD_TIMEOUT_SEC", 120) * 2,
+            )
+        return resp.json()["data"]["id"]

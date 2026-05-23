@@ -157,3 +157,36 @@ class TestVTClient(unittest.TestCase):
         with patch("time.monotonic", return_value=10.0):
             with pytest.raises(requests.HTTPError):
                 self.client._request("GET", "/files/abc")
+
+    # -- upload_file --
+
+    @patch("builtins.open", MagicMock())
+    @patch("pathlib.Path.stat", MagicMock(return_value=MagicMock(st_size=100)))
+    @patch("time.sleep")
+    def test_upload_small_file_hits_files_endpoint(self, mock_sleep):
+        resp = _mock_http_resp(200, json_data={"data": {"id": "x"}})
+        self.mock_request.return_value = resp
+        result = self.client.upload_file(Path("/fake/file.exe"))
+        self.mock_request.assert_called_once()
+        method, path = self.mock_request.call_args[0][0], self.mock_request.call_args[0][1]
+        assert method == "POST"
+        assert path == "/files"
+        assert result == "x"
+
+    @patch("virustotal_scan.vt_client.requests.post")
+    @patch("builtins.open", MagicMock())
+    @patch("pathlib.Path.stat", MagicMock(return_value=MagicMock(st_size=64_000_000)))
+    @patch("time.sleep")
+    def test_upload_large_file_hits_upload_url_endpoint(self, mock_sleep, mock_post):
+        url_resp = _mock_http_resp(200, json_data={"data": "https://up.vt.com/upload"})
+        upload_resp = _mock_http_resp(200, json_data={"data": {"id": "y"}})
+        self.mock_request.return_value = url_resp
+        mock_post.return_value = upload_resp
+        result = self.client.upload_file(Path("/fake/file.exe"))
+        self.mock_request.assert_called_once()
+        method, path = self.mock_request.call_args[0][0], self.mock_request.call_args[0][1]
+        assert method == "GET"
+        assert path == "/files/upload_url"
+        mock_post.assert_called_once()
+        assert mock_post.call_args[0][0] == "https://up.vt.com/upload"
+        assert result == "y"
