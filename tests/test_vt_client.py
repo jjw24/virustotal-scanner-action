@@ -80,3 +80,26 @@ class TestWaitRetry:
         state = MockRetryState(exception)
         mock_we.return_value.return_value = 15.0
         assert _wait_retry(state) == 15.0
+
+
+# ------------------------------------------------------------------
+# VTClient
+# ------------------------------------------------------------------
+
+class TestVTClient(unittest.TestCase):
+    def setUp(self):
+        self.client = VTClient(api_key="test-key-123")
+        self.mock_request = MagicMock()
+        self.client._session.request = self.mock_request
+
+    def tearDown(self):
+        self.client = None
+        self.mock_request = None
+
+    # -- init --
+
+    def test_sets_api_key_header(self):
+        assert self.client._session.headers["x-apikey"] == "test-key-123"
+
+    def test_default_interval(self):
+        assert self.client._interval == 15.0
