@@ -190,3 +190,44 @@ class TestVTClient(unittest.TestCase):
         mock_post.assert_called_once()
         assert mock_post.call_args[0][0] == "https://up.vt.com/upload"
         assert result == "y"
+
+    # -- get_file_report --
+
+    @patch("time.sleep")
+    def test_returns_json(self, mock_sleep):
+        payload = {"data": {"id": "abc"}}
+        resp = _mock_http_resp(200, json_data=payload)
+        self.mock_request.return_value = resp
+        with patch("time.monotonic", return_value=5.0):
+            result = self.client.get_file_report("abc")
+        assert result == payload
+
+    # -- wait_for_analysis --
+
+    @patch("time.sleep")
+    def test_wait_returns_when_completed(self, mock_sleep):
+        completed_data = {"data": {"attributes": {"status": "completed"}}}
+        resp = _mock_http_resp(200, json_data=completed_data)
+        self.mock_request.return_value = resp
+        with patch("time.monotonic", side_effect=[100.0, 100.1]):
+            result = self.client.wait_for_analysis("id-123")
+        assert result == completed_data["data"]
+
+    @patch("time.sleep")
+    def test_wait_raises_on_failed_status(self, mock_sleep):
+        failed_data = {"data": {"attributes": {"status": "failed"}}}
+        resp = _mock_http_resp(200, json_data=failed_data)
+        self.mock_request.return_value = resp
+        with patch("time.monotonic", side_effect=[100.0, 100.1]):
+            with pytest.raises(RuntimeError, match="analysis failed"):
+                self.client.wait_for_analysis("id-123")
+
+    @patch("virustotal_scan.vt_client.env_int", return_value=0)
+    @patch("time.sleep")
+    def test_wait_raises_on_timeout(self, mock_sleep, mock_env_int):
+        pending_data = {"data": {"attributes": {"status": "in-progress"}}}
+        resp = _mock_http_resp(200, json_data=pending_data)
+        self.mock_request.return_value = resp
+        with patch("time.monotonic", side_effect=[100.0, 100.0, 100.0, 100.0]):
+            with pytest.raises(TimeoutError, match="polls="):
+                self.client.wait_for_analysis("id-123")

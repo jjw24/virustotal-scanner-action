@@ -7,6 +7,9 @@ from typing import Any
 import requests
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
+from virustotal_scan._config import VT_API_BASE, LARGE_FILE_BYTES, env_float, env_int
+from virustotal_scan.file_utils import sha256_file
+
 
 def _is_retryable(exception: BaseException) -> bool:
     """Determine whether an exception should trigger a retry.
@@ -127,3 +130,43 @@ class VTClient:
                 timeout=env_int("VT_DOWNLOAD_TIMEOUT_SEC", 120) * 2,
             )
         return resp.json()["data"]["id"]
+
+    def get_file_report(self, sha256: str) -> dict[str, Any]:
+        """Fetch the file report for a given SHA-256 hash.
+
+        Args:
+            sha256: The SHA-256 digest of the file.
+
+        Returns:
+            The raw JSON response from the VirusTotal API.
+        """
+        resp = self._request("GET", f"/files/{sha256}")
+        return resp.json()
+
+    def wait_for_analysis(self, analysis_id: str) -> dict[str, Any]:
+        """Poll the analysis endpoint until the analysis completes.
+
+        Args:
+            analysis_id: The analysis ID returned by VirusTotal.
+
+        Returns:
+            The completed analysis data.
+
+        Raises:
+            RuntimeError: If the analysis ended with a failed status.
+            TimeoutError: If the analysis does not complete within the
+                configured polling timeout.
+        """
+        deadline = time.monotonic() + env_int("VT_ANALYSIS_POLL_TIMEOUT_SEC", 600)
+        polls = 0
+        status = "unknown"
+        while time.monotonic() < deadline:
+            polls += 1
+            data = self._request("GET", f"/analyses/{analysis_id}").json()["data"]
+            status = data["attributes"].get("status")
+            if status == "completed":
+                return data
+            if status == "failed":
+                raise RuntimeError(f"analysis failed: {analysis_id}")
+            time.sleep(min(30, self._interval))
+        raise TimeoutError(f"polls={polls} last_status={status}")
