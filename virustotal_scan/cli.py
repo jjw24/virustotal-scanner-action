@@ -53,8 +53,7 @@ def main() -> None:
     api_key = os.getenv("VT_API_KEY", "")
     if not api_key:
         print(
-            "VT_API_KEY is not set. Add a VirusTotal API key as the repository secret VT_API_KEY "
-            "or export it locally."
+            "VT_API_KEY is not set. Add a VirusTotal API key as environment variable VT_API_KEY."
         )
         sys.exit(1)
 
