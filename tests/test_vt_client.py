@@ -168,9 +168,9 @@ class TestVTClient(unittest.TestCase):
         self.mock_request.return_value = resp
         result = self.client.upload_file(Path("/fake/file.exe"))
         self.mock_request.assert_called_once()
-        method, path = self.mock_request.call_args[0][0], self.mock_request.call_args[0][1]
+        method, url = self.mock_request.call_args[0][0], self.mock_request.call_args[0][1]
         assert method == "POST"
-        assert path == "/files"
+        assert url == "https://www.virustotal.com/api/v3/files"
         assert result == "x"
 
     @patch("virustotal_scan.vt_client.requests.post")
@@ -184,9 +184,9 @@ class TestVTClient(unittest.TestCase):
         mock_post.return_value = upload_resp
         result = self.client.upload_file(Path("/fake/file.exe"))
         self.mock_request.assert_called_once()
-        method, path = self.mock_request.call_args[0][0], self.mock_request.call_args[0][1]
+        method, url = self.mock_request.call_args[0][0], self.mock_request.call_args[0][1]
         assert method == "GET"
-        assert path == "/files/upload_url"
+        assert url == "https://www.virustotal.com/api/v3/files/upload_url"
         mock_post.assert_called_once()
         assert mock_post.call_args[0][0] == "https://up.vt.com/upload"
         assert result == "y"
@@ -209,7 +209,7 @@ class TestVTClient(unittest.TestCase):
         completed_data = {"data": {"attributes": {"status": "completed"}}}
         resp = _mock_http_resp(200, json_data=completed_data)
         self.mock_request.return_value = resp
-        with patch("time.monotonic", side_effect=[100.0, 100.1]):
+        with patch("time.monotonic", return_value=100.0):
             result = self.client.wait_for_analysis("id-123")
         assert result == completed_data["data"]
 
@@ -218,7 +218,7 @@ class TestVTClient(unittest.TestCase):
         failed_data = {"data": {"attributes": {"status": "failed"}}}
         resp = _mock_http_resp(200, json_data=failed_data)
         self.mock_request.return_value = resp
-        with patch("time.monotonic", side_effect=[100.0, 100.1]):
+        with patch("time.monotonic", return_value=100.0):
             with pytest.raises(RuntimeError, match="analysis failed"):
                 self.client.wait_for_analysis("id-123")
 
