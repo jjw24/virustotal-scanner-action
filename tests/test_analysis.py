@@ -1,7 +1,5 @@
 """Tests for analysis helpers - evaluate_stats, engine_threat_map, flagged_engine_names."""
 
-import pytest
-
 from virustotal_scan.analysis import engine_threat_map, evaluate_stats, flagged_engine_names
 from virustotal_scan.models import FailReason
 

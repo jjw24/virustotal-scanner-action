@@ -3,7 +3,7 @@
 import json
 
 from virustotal_scan.models import FailReason, ScanResult
-from virustotal_scan.reporters import ConsoleReporter, CompositeReporter, JsonReportWriter
+from virustotal_scan.reporters import CompositeReporter, ConsoleReporter, JsonReportWriter
 
 
 class TestConsoleReporter:
@@ -79,12 +79,17 @@ class TestConsoleReporter:
         reporter = ConsoleReporter()
         passed = ScanResult(
             file_name="/p/file.zip",
-            passed=True, step="done", elapsed_sec=1.0,
+            passed=True,
+            step="done",
+            elapsed_sec=1.0,
         )
         failed = ScanResult(
             file_name="/f/file.zip",
-            passed=False, step="done", elapsed_sec=1.0,
-            reason=FailReason.DETECTION, details="malicious=1",
+            passed=False,
+            step="done",
+            elapsed_sec=1.0,
+            reason=FailReason.DETECTION,
+            details="malicious=1",
         )
         reporter.on_complete([passed, failed], {})
         captured = capsys.readouterr()
@@ -107,8 +112,10 @@ class TestJsonReportWriter:
         writer = JsonReportWriter(path)
         r = ScanResult(
             file_name="/f/file.zip",
-            passed=False, sha256="a" * 64,
-            reason=FailReason.DETECTION, details="malicious=1",
+            passed=False,
+            sha256="a" * 64,
+            reason=FailReason.DETECTION,
+            details="malicious=1",
         )
         writer.on_complete([r], {})
         assert path.is_file()
@@ -120,11 +127,14 @@ class TestJsonReportWriter:
 class TestCompositeReporter:
     def test_delegates_progress(self):
         calls = []
+
         class FakeReporter:
             def on_progress(self, r):
                 calls.append("progress")
+
             def on_complete(self, results, meta):
                 calls.append("complete")
+
         composite = CompositeReporter([FakeReporter(), FakeReporter()])
         r = ScanResult(file_name="/x.zip", passed=True)
         composite.on_progress(r)
@@ -132,11 +142,14 @@ class TestCompositeReporter:
 
     def test_delegates_complete(self):
         calls = []
+
         class FakeReporter:
             def on_progress(self, r):
                 calls.append("progress")
+
             def on_complete(self, results, meta):
                 calls.append("complete")
+
         composite = CompositeReporter([FakeReporter(), FakeReporter()])
         composite.on_complete([], {})
         assert calls.count("complete") == 2

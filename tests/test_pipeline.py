@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-
 from virustotal_scan.cache import CacheEntry
 from virustotal_scan.models import FailReason, ScanResult
 from virustotal_scan.pipeline import ScanPipeline
@@ -62,6 +61,7 @@ class TestScanPipeline:
                 step="done",
                 elapsed_sec=0.1,
             )
+
         monkeypatch.setattr(pipeline_mod, "scan_file_vt", fake_scan)
 
         pipe = ScanPipeline(
@@ -92,6 +92,7 @@ class TestScanPipeline:
                 step="done",
                 elapsed_sec=0.1,
             )
+
         monkeypatch.setattr(pipeline_mod, "scan_file_vt", fake_scan)
 
         reporter = FakeReporter()

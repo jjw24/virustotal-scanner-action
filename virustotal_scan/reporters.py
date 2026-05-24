@@ -48,9 +48,7 @@ class ConsoleReporter(ResultReporter):
             status = "PASS"
         else:
             status = "FAIL"
-        print(
-            f"[{status}] {result.file_name} | sha256={result.sha256[:12]}... | {result.elapsed_sec:.1f}s"
-        )
+        print(f"[{status}] {result.file_name} | sha256={result.sha256[:12]}... | {result.elapsed_sec:.1f}s")
 
     def on_complete(self, results: list[ScanResult], meta: dict[str, Any]) -> None:
         """Print a summary with pass/fail counts and failure details.
@@ -63,7 +61,7 @@ class ConsoleReporter(ResultReporter):
         passed = sum(1 for r in results if r.passed and not r.whitelisted)
         whitelisted = sum(1 for r in results if r.whitelisted)
         failed = sum(1 for r in results if not r.passed)
-        print(f"\n--- Summary ---")
+        print("\n--- Summary ---")
         print(f"{total} scanned | {passed} passed | {whitelisted} whitelisted | {failed} failed")
 
         failed_results = [r for r in results if not r.passed]

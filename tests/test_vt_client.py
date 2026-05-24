@@ -7,10 +7,10 @@ import requests
 
 from virustotal_scan.vt_client import VTClient, _is_retryable, _wait_retry
 
-
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def _make_resp(status_code: int) -> requests.Response:
     resp = requests.Response()
@@ -39,6 +39,7 @@ class MockRetryState:
 # _is_retryable
 # ------------------------------------------------------------------
 
+
 class TestIsRetryable:
     @pytest.mark.parametrize("code", [429, 500, 502, 503])
     def test_retryable_http_errors(self, code):
@@ -65,6 +66,7 @@ class TestIsRetryable:
 # ------------------------------------------------------------------
 # _wait_retry
 # ------------------------------------------------------------------
+
 
 class TestWaitRetry:
     def test_uses_retry_after_header(self):
@@ -102,6 +104,7 @@ class TestWaitRetry:
 # ------------------------------------------------------------------
 # VTClient
 # ------------------------------------------------------------------
+
 
 class TestVTClient(unittest.TestCase):
     def setUp(self):
@@ -145,9 +148,7 @@ class TestVTClient(unittest.TestCase):
         self.mock_request.return_value = resp
         with patch("time.monotonic", return_value=10.0):
             result = self.client._request("GET", "/files/abc")
-        self.mock_request.assert_called_once_with(
-            "GET", "https://www.virustotal.com/api/v3/files/abc"
-        )
+        self.mock_request.assert_called_once_with("GET", "https://www.virustotal.com/api/v3/files/abc")
         assert result is resp
 
     @patch("time.sleep")
@@ -234,7 +235,7 @@ class TestVTClient(unittest.TestCase):
 
     # -- scan_file --
 
-    @patch.object(VTClient, 'get_file_report')
+    @patch.object(VTClient, "get_file_report")
     @patch("virustotal_scan.vt_client.sha256_file", return_value="abc")
     @patch("time.sleep")
     def test_scan_uses_vt_cached_report_when_hash_exists(self, mock_sleep, mock_sha256, mock_gfr):
@@ -246,13 +247,13 @@ class TestVTClient(unittest.TestCase):
                 }
             }
         }
-        with patch.object(self.client, 'upload_file') as mock_uf:
+        with patch.object(self.client, "upload_file") as mock_uf:
             stats, sha, _ = self.client.scan_file(Path("/fake/path"))
         assert stats == {"malicious": 0, "suspicious": 0}
         assert sha == "abc"
         mock_uf.assert_not_called()
 
-    @patch.object(VTClient, 'get_file_report')
+    @patch.object(VTClient, "get_file_report")
     @patch("virustotal_scan.vt_client.sha256_file", return_value="abc")
     @patch("time.sleep")
     def test_scan_uploads_when_vt_cached_report_missing(self, mock_sleep, mock_sha256, mock_gfr):
@@ -264,8 +265,8 @@ class TestVTClient(unittest.TestCase):
                 "stats": {"malicious": 1, "suspicious": 0},
             }
         }
-        with patch.object(self.client, 'upload_file', return_value="id-456"):
-            with patch.object(self.client, 'wait_for_analysis', return_value=analysis_data):
+        with patch.object(self.client, "upload_file", return_value="id-456"):
+            with patch.object(self.client, "wait_for_analysis", return_value=analysis_data):
                 stats, sha, _ = self.client.scan_file(Path("/fake/path"))
         assert stats == {"malicious": 1, "suspicious": 0}
         assert sha == "abc"

@@ -7,7 +7,7 @@ from typing import Any
 import requests
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
-from virustotal_scan._config import VT_API_BASE, LARGE_FILE_BYTES, env_float, env_int
+from virustotal_scan._config import LARGE_FILE_BYTES, VT_API_BASE, env_float, env_int
 from virustotal_scan.file_utils import sha256_file
 
 

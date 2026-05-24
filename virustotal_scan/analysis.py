@@ -129,9 +129,7 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
 
         if fail_reason:
             result.reason = fail_reason
-            result.details = (
-                f"malicious={stats.get('malicious', 0)} suspicious={stats.get('suspicious', 0)}"
-            )
+            result.details = f"malicious={stats.get('malicious', 0)} suspicious={stats.get('suspicious', 0)}"
             result.step = "done"
         elif result.sandbox_flags:
             result.passed = False
@@ -153,7 +151,9 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
                 error_body = e.response.json().get("error", {}).get("message", e.response.text[:500])
             except Exception:
                 error_body = e.response.text[:500]
-        result.details = f"{e.request.method} {e.request.url} status={e.response.status_code if e.response else '?'} {error_body}"
+        result.details = (
+            f"{e.request.method} {e.request.url} status={e.response.status_code if e.response else '?'} {error_body}"
+        )
         result.step = "upload"
     except requests.RequestException as e:
         result.reason = FailReason.VT_API_ERROR

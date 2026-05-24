@@ -153,7 +153,9 @@ class TestMatchesWhitelist:
             "sandbox_flags": ["flag1", "flag2"],
         }
         result = ScanResult(
-            file_name="/x.zip", passed=False, sha256="a" * 64,
+            file_name="/x.zip",
+            passed=False,
+            sha256="a" * 64,
             engine_threats={"EngineA": "Trojan.Generic"},
             sandbox_flags=["flag2", "flag1"],
         )
@@ -171,7 +173,9 @@ class TestMatchesWhitelist:
         entry1 = {"sha256": "b" * 64, "engine_threats": {}, "sandbox_flags": []}
         entry2 = {"sha256": "a" * 64, "engine_threats": {"EngineA": "Trojan.Generic"}, "sandbox_flags": []}
         result = ScanResult(
-            file_name="/x.zip", passed=False, sha256="a" * 64,
+            file_name="/x.zip",
+            passed=False,
+            sha256="a" * 64,
             engine_threats={"EngineA": "Trojan.Generic"},
         )
         assert matches_whitelist(result, [entry1, entry2]) is True
