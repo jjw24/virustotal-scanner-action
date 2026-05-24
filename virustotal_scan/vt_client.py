@@ -172,16 +172,24 @@ class VTClient:
         raise TimeoutError(f"polls={polls} last_status={status}")
 
     def scan_file(self, file_path: Path) -> tuple[dict[str, Any], str, dict[str, Any]]:
-        """Scan a file, returning stats, SHA-256, and analysis data.
+        """Orchestrate a full scan of a file against VirusTotal.
 
-        If the file hash already exists on VirusTotal, the cached report
-        is returned without re-uploading.
+        Responsibility:
+          1. Compute the file's SHA-256 hash locally.
+          2. Query the VT API for an existing report- if the file has
+             already been scanned, return the cached stats and results
+             without uploading again (avoids quota waste).
+          3. On a cache miss (HTTP 404), upload the file, poll the
+             analysis endpoint until completion, and return the fresh
+             results.
 
         Args:
             file_path: Path to the file to scan.
 
         Returns:
-            A tuple of ``(stats_dict, sha256_hex, analysis_data)``.
+            A tuple of ``(stats_dict, sha256_hex, analysis_data)``
+            containing the detection counts, the file hash, and the
+            full analysis response from the VT API.
         """
         sha = sha256_file(file_path)
 
