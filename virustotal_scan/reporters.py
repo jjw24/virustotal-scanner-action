@@ -136,7 +136,13 @@ class JsonReportWriter(ResultReporter):
 
 
 class CompositeReporter(ResultReporter):
-    """Delegates to multiple reporters."""
+    """Holds multiple reporters and calls all of them for every event.
+
+    The pipeline only talks to one ``ResultReporter``, but we often want
+    to both print to the console *and* write a JSON report. This class
+    wraps a list of reporters and forwards each ``on_progress`` /
+    ``on_complete`` call to every one of them.
+    """
 
     def __init__(self, reporters: list[ResultReporter]) -> None:
         """Initialise the composite reporter.
