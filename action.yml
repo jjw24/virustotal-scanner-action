@@ -1,0 +1,59 @@
+name: 'VirusTotal Scanner'
+description: 'Scan files with VirusTotal, view results directly in the job and automatically pass/fail based on the outcome.'
+author: 'Jeremy Wu'
+
+inputs:
+  api-key:
+    description: 'VirusTotal API key'
+    required: true
+  scan-paths:
+    description: 'Comma- or newline-separated file or directory paths to scan'
+    required: true
+  no-cache:
+    description: 'Skip cache lookup (all files will be resubmitted to VirusTotal)'
+    required: false
+    default: 'false'
+  cache-path:
+    description: 'Path to cache file (relative to workspace root)'
+    required: false
+    default: 'vt_cache.json'
+  whitelist-path:
+    description: 'Path to whitelist file (relative to workspace root)'
+    required: false
+    default: 'vt_whitelist.json'
+  report-path:
+    description: 'Path to write JSON report output (relative to workspace root)'
+    required: false
+    default: 'vt_report.json'
+  request-interval-sec:
+    description: 'Minimum seconds between VT API requests'
+    required: false
+    default: '15'
+  analysis-poll-timeout-sec:
+    description: 'Maximum seconds to wait for VT analysis to complete'
+    required: false
+    default: '600'
+  download-timeout-sec:
+    description: 'Timeout in seconds for file uploads to VT'
+    required: false
+    default: '120'
+
+outputs:
+  exit-code:
+    description: 'Pipeline exit code (0 = all passed, 1 = some failed)'
+  report-path:
+    description: 'Path to the generated JSON report file'
+  passed-count:
+    description: 'Number of files that passed the scan'
+  failed-count:
+    description: 'Number of files that failed the scan'
+  total-count:
+    description: 'Total number of files scanned'
+
+branding:
+  icon: 'shield'
+  color: 'green'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
