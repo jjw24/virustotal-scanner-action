@@ -9,7 +9,11 @@ from virustotal_scan.models import ScanResult
 
 
 class ResultReporter(ABC):
-    """Strategy for reporting scan results."""
+    """Interface for reporting scan results as they are produced.
+
+    Subclasses implement :meth:`on_progress` (called after each file) and
+    :meth:`on_complete` (called once all files are done).
+    """
 
     @abstractmethod
     def on_progress(self, result: ScanResult) -> None:
@@ -18,7 +22,6 @@ class ResultReporter(ABC):
         Args:
             result: The scan result for a single file.
         """
-        ...
 
     @abstractmethod
     def on_complete(self, results: list[ScanResult], meta: dict[str, Any]) -> None:
@@ -28,7 +31,6 @@ class ResultReporter(ABC):
             results: All scan results from the pipeline run.
             meta: Top-level metadata (e.g. file count).
         """
-        ...
 
 
 class ConsoleReporter(ResultReporter):
@@ -51,7 +53,7 @@ class ConsoleReporter(ResultReporter):
         print(f"[{status}] {result.file_name} | sha256={result.sha256[:12]}... | {result.elapsed_sec:.1f}s")
 
     def on_complete(self, results: list[ScanResult], meta: dict[str, Any]) -> None:
-        """Print a summary with pass/fail counts and failure details.
+        """Print a summary block with pass/fail counts and failure details.
 
         Args:
             results: All scan results from the pipeline run.
@@ -78,6 +80,43 @@ class ConsoleReporter(ResultReporter):
                     print(f"  engine: {', '.join(engine_detections)}")
                 if r.sandbox_flags:
                     print(f"  sandbox: {', '.join(r.sandbox_flags)}")
+
+
+class GitHubActionReporter(ResultReporter):
+    """Decorates :class:`ConsoleReporter` with GitHub Actions log grouping.
+
+    Emits ``::group::`` / ``::endgroup::`` workflow commands so the
+    per-file progress and the summary each appear in their own collapsible
+    section.  Delegates all output to an internal :class:`ConsoleReporter`.
+    """
+
+    def __init__(self) -> None:
+        self._inner = ConsoleReporter()
+        self._files_open = False
+
+    def on_progress(self, result: ScanResult) -> None:
+        """Open the "Files" group on first call, then delegate.
+
+        Args:
+            result: The scan result for a single file.
+        """
+        if not self._files_open:
+            print("::group::VirusTotal Scanner - Files")
+            self._files_open = True
+        self._inner.on_progress(result)
+
+    def on_complete(self, results: list[ScanResult], meta: dict[str, Any]) -> None:
+        """Close the "Files" group, open "Summary", delegate, close.
+
+        Args:
+            results: All scan results from the pipeline run.
+            meta: Top-level metadata (e.g. file count).
+        """
+        if self._files_open:
+            print("::endgroup::")
+        print("::group::VirusTotal Scanner - Summary")
+        self._inner.on_complete(results, meta)
+        print("::endgroup::")
 
 
 class JsonReportWriter(ResultReporter):

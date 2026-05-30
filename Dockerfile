@@ -9,6 +9,8 @@ COPY requirements.txt /action/requirements.txt
 RUN pip install --no-cache-dir -r /action/requirements.txt
 
 COPY virustotal_scan /action/virustotal_scan
+COPY entrypoint.sh /action/entrypoint.sh
+RUN chmod +x /action/entrypoint.sh
 
 WORKDIR /github/workspace
-ENTRYPOINT ["python", "-m", "virustotal_scan"]
+ENTRYPOINT ["/action/entrypoint.sh"]

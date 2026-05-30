@@ -39,6 +39,11 @@ class FileCacheProvider:
     """
 
     def __init__(self, path: Path) -> None:
+        """Initialise the cache provider.
+
+        Args:
+            path: Filesystem path to the JSON cache file.
+        """
         self._path = path
 
     def load(self) -> dict[str, CacheEntry]:

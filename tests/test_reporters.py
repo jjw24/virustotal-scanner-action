@@ -3,7 +3,7 @@
 import json
 
 from virustotal_scan.models import FailReason, ScanResult
-from virustotal_scan.reporters import CompositeReporter, ConsoleReporter, JsonReportWriter
+from virustotal_scan.reporters import CompositeReporter, ConsoleReporter, GitHubActionReporter, JsonReportWriter
 
 
 class TestConsoleReporter:
@@ -97,6 +97,55 @@ class TestConsoleReporter:
         assert "1 failed" in captured.out
         assert "/f/file.zip" in captured.out
         assert "DETECTION" in captured.out
+
+
+class TestGitHubActionReporter:
+    def test_opens_files_group_on_first_progress(self, capsys):
+        reporter = GitHubActionReporter()
+        r = ScanResult(file_name="/a/file.zip", passed=True, sha256="a" * 64, step="done", elapsed_sec=1.0)
+        reporter.on_progress(r)
+        captured = capsys.readouterr()
+        assert "::group::VirusTotal Scanner - Files" in captured.out
+
+    def test_single_group_for_multiple_progress_calls(self, capsys):
+        reporter = GitHubActionReporter()
+        r1 = ScanResult(file_name="/a/file.zip", passed=True, sha256="a" * 64, step="done", elapsed_sec=1.0)
+        r2 = ScanResult(file_name="/b/file.zip", passed=True, sha256="b" * 64, step="done", elapsed_sec=2.0)
+        reporter.on_progress(r1)
+        reporter.on_progress(r2)
+        captured = capsys.readouterr()
+        assert captured.out.count("::group::VirusTotal Scanner - Files") == 1
+
+    def test_closes_files_and_opens_summary_on_complete(self, capsys):
+        reporter = GitHubActionReporter()
+        r = ScanResult(file_name="/a/file.zip", passed=True, sha256="a" * 64, step="done", elapsed_sec=1.0)
+        reporter.on_progress(r)
+        reporter.on_complete([r], {})
+        captured = capsys.readouterr()
+        assert "::endgroup::" in captured.out
+        assert "::group::VirusTotal Scanner - Summary" in captured.out
+
+    def test_closes_summary_on_complete(self, capsys):
+        reporter = GitHubActionReporter()
+        r = ScanResult(file_name="/a/file.zip", passed=True, sha256="a" * 64, step="done", elapsed_sec=1.0)
+        reporter.on_progress(r)
+        reporter.on_complete([r], {})
+        captured = capsys.readouterr()
+        assert captured.out.rstrip().endswith("::endgroup::")
+
+    def test_inner_reporter_still_receives_calls(self, capsys):
+        reporter = GitHubActionReporter()
+        r = ScanResult(file_name="/a/file.zip", passed=True, sha256="a" * 64, step="done", elapsed_sec=1.0)
+        reporter.on_progress(r)
+        captured = capsys.readouterr()
+        assert "[PASS]" in captured.out
+
+    def test_no_progress_emits_summary_group_only(self, capsys):
+        reporter = GitHubActionReporter()
+        reporter.on_complete([], {})
+        captured = capsys.readouterr()
+        assert "::group::VirusTotal Scanner - Summary" in captured.out
+        assert "::group::VirusTotal Scanner - Files" not in captured.out
 
 
 class TestJsonReportWriter:

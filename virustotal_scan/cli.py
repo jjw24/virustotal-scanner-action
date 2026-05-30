@@ -9,7 +9,8 @@ from virustotal_scan._config import CACHE_PATH, REPORT_PATH, WHITELIST_PATH, env
 from virustotal_scan.cache import FileCacheProvider
 from virustotal_scan.file_utils import resolve_scan_paths
 from virustotal_scan.pipeline import ScanPipeline
-from virustotal_scan.reporters import CompositeReporter, ConsoleReporter, JsonReportWriter
+from virustotal_scan.reporters import (CompositeReporter, ConsoleReporter, GitHubActionReporter, JsonReportWriter,
+                                       ResultReporter)
 
 
 def _split_paths_string(raw: str) -> list[str]:
@@ -93,9 +94,14 @@ def main() -> None:
     file_paths = resolve_scan_paths(paths)
     print(f"Resolved {len(file_paths)} file(s) from {len(paths)} path(s)")
 
+    console: ResultReporter
+    if os.getenv("USE_GITHUB_ACTION_REPORTER") == "true":
+        console = GitHubActionReporter()
+    else:
+        console = ConsoleReporter()
     reporter = CompositeReporter(
         [
-            ConsoleReporter(),
+            console,
             JsonReportWriter(report_path),
         ]
     )
