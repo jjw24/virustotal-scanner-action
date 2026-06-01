@@ -133,6 +133,12 @@ class ScanPipeline:
 
             r = scan_file_vt(vt, file_path)
 
+            # sha256 is only set by scan_file_vt on a successful response;
+            # on exceptions (timeout, API error, etc.) it stays empty, so
+            # fill in the local hash we already computed.
+            if not r.sha256:
+                r.sha256 = sha
+
             if not r.passed and matches_whitelist(r, whitelist):
                 r.passed = True
                 r.whitelisted = True
