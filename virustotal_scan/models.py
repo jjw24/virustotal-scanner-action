@@ -13,12 +13,14 @@ class FailReason(str, Enum):
         VT_API_ERROR: The VirusTotal API returned an error.
         ANALYSIS_TIMEOUT: The analysis did not complete within the timeout.
         DETECTION: One or more engines flagged the file.
+        QUOTA_EXCEEDED: The VirusTotal API quota was exceeded.
     """
 
     FILE_ERROR = "FILE_ERROR"
     VT_API_ERROR = "VT_API_ERROR"
     ANALYSIS_TIMEOUT = "ANALYSIS_TIMEOUT"
     DETECTION = "DETECTION"
+    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
 
 
 @dataclass

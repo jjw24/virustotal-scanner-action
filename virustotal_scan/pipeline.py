@@ -13,6 +13,8 @@ Owns the top-level control flow that drives per-file scanning via
   it to passed and mark it whitelisted.
 - Persist passing (non-whitelisted) results back to the cache immediately
   and flush the cache file to disk after each file.
+- On a ``QUOTA_EXCEEDED`` result, stop processing remaining files
+  immediately and exit with code 1.
 - Report every result as it arrives and emit a final summary.
 - Return exit code 0 (all passed) or 1 (any failed).
 """
@@ -23,7 +25,7 @@ from typing import Any
 from virustotal_scan.analysis import scan_file_vt
 from virustotal_scan.cache import CacheEntry, FileCacheProvider, load_whitelist, matches_whitelist
 from virustotal_scan.file_utils import sha256_file
-from virustotal_scan.models import ScanResult
+from virustotal_scan.models import FailReason, ScanResult
 from virustotal_scan.reporters import ResultReporter
 from virustotal_scan.vt_client import VTClient
 
@@ -43,6 +45,9 @@ class ScanPipeline:
         No                                                           next
         │                                                             │
         └─ VT API scan ──> whitelist check ──> report ──> cache ─────┘
+
+    If a scan returns :attr:`FailReason.QUOTA_EXCEEDED` the loop breaks
+    immediately and the pipeline exits with code 1.
     """
 
     def __init__(
@@ -82,11 +87,12 @@ class ScanPipeline:
         3. **Cache miss / bypass**: call the VT API via ``scan_file_vt``.
         4. **Whitelist override**: if the VT result is not-passed but matches
            a whitelist entry, flip it to passed.
-        5. **Cache write**: persist passing (non-whitelisted) results so
-           future runs can reuse them.
-        6. **Report**: notify the reporter for every result.
         5. **Cache write**: persist passing (non-whitelisted) results and
            flush the cache file to disk after every file.
+        6. **Early exit**: if the scan result has
+           :attr:`FailReason.QUOTA_EXCEEDED`, stop processing remaining
+           files immediately.
+        7. **Report**: notify the reporter for every result.
 
         After all files have been processed the reporter receives a final
         summary.
@@ -146,5 +152,9 @@ class ScanPipeline:
                 )
 
             self._cache.save(cache)
+
+            if r.reason == FailReason.QUOTA_EXCEEDED:
+                break
+
         self._reporter.on_complete(results, meta)
         return 1 if any(not r.passed for r in results) else 0

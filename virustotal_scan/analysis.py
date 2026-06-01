@@ -88,6 +88,8 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
       4. Populate the :class:`ScanResult` with reason, details, and metadata.
       5. Catch and map any request/network/timeout errors to the appropriate
          ``FailReason`` so the pipeline can continue with remaining files.
+         When the VT API returns a ``QuotaExceededError`` error code the
+         reason is set to :attr:`FailReason.QUOTA_EXCEEDED`.
 
     Args:
         vt_client: An initialised VTClient instance.
@@ -146,11 +148,16 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
     except requests.HTTPError as e:
         result.reason = FailReason.VT_API_ERROR
         error_body = ""
+        error_code = ""
         if e.response is not None:
             try:
-                error_body = e.response.json().get("error", {}).get("message", e.response.text[:500])
+                vt_error = e.response.json().get("error", {})
+                error_code = vt_error.get("code", "")
+                error_body = vt_error.get("message", e.response.text[:500])
             except Exception:
                 error_body = e.response.text[:500]
+        if error_code == "QuotaExceededError":
+            result.reason = FailReason.QUOTA_EXCEEDED
         result.details = (
             f"{e.request.method} {e.request.url} status={e.response.status_code if e.response else '?'} {error_body}"
         )
