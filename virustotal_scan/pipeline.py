@@ -11,7 +11,8 @@ Owns the top-level control flow that drives per-file scanning via
     - Cache miss / stale / not-passed: call VT API via ``scan_file_vt``.
 - After VT analysis, consult the whitelist: if the result matches, flip
   it to passed and mark it whitelisted.
-- Persist passing (non-whitelisted) results back to the cache.
+- Persist passing (non-whitelisted) results back to the cache immediately
+  and flush the cache file to disk after each file.
 - Report every result as it arrives and emit a final summary.
 - Return exit code 0 (all passed) or 1 (any failed).
 """
@@ -84,9 +85,11 @@ class ScanPipeline:
         5. **Cache write**: persist passing (non-whitelisted) results so
            future runs can reuse them.
         6. **Report**: notify the reporter for every result.
+        5. **Cache write**: persist passing (non-whitelisted) results and
+           flush the cache file to disk after every file.
 
-        After all files have been processed the cache is flushed to disk and
-        the reporter receives a final summary.
+        After all files have been processed the reporter receives a final
+        summary.
 
         Returns:
             int: Exit code- ``0`` if every file passed, ``1`` if any failed.
@@ -142,6 +145,6 @@ class ScanPipeline:
                     sandbox_flags=r.sandbox_flags,
                 )
 
-        self._cache.save(cache)
+            self._cache.save(cache)
         self._reporter.on_complete(results, meta)
         return 1 if any(not r.passed for r in results) else 0
