@@ -195,13 +195,14 @@ class TestVTClient(unittest.TestCase):
     # -- get_file_report --
 
     @patch("time.sleep")
-    def test_returns_json(self, mock_sleep):
-        payload = {"data": {"id": "abc"}}
-        resp = _mock_http_resp(200, json_data=payload)
+    def test_get_file_report_requests_correct_url(self, mock_sleep):
+        resp = _mock_http_resp(200)
         self.mock_request.return_value = resp
-        with patch("time.monotonic", return_value=5.0):
-            result = self.client.get_file_report("abc")
-        assert result == payload
+        self.client.get_file_report("abc123")
+        self.mock_request.assert_called_once()
+        method, url = self.mock_request.call_args[0]
+        assert method == "GET"
+        assert url == "https://www.virustotal.com/api/v3/files/abc123"
 
     # -- wait_for_analysis --
 
