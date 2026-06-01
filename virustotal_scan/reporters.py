@@ -120,7 +120,14 @@ class GitHubActionReporter(ResultReporter):
 
 
 class JsonReportWriter(ResultReporter):
-    """Writes a JSON report file for failed results."""
+    """Writes the full JSON report to disk after each file scan.
+
+    Results are accumulated in memory and the complete report (meta +
+    all results collected so far) is written to disk on every
+    ``on_progress`` call so partial output is always available.
+    ``on_complete`` is intentionally a no-op - the last ``on_progress``
+    already captured the final state.
+    """
 
     def __init__(self, report_path: Path) -> None:
         """Initialise the JSON report writer.
@@ -129,47 +136,42 @@ class JsonReportWriter(ResultReporter):
             report_path: Path where the JSON report will be written.
         """
         self._report_path = report_path
+        self._results: list[ScanResult] = []
 
     def on_progress(self, result: ScanResult) -> None:
-        """No-op per-file; JSON output is written on completion.
+        """Write to the json report on disk after the file scan is complete.
+
+        The on-disk file is overwritten with the full list of results
+        accumulated so far so that partial output is available if the
+        process is interrupted.
 
         Args:
-            result: The scan result for a single file (unused).
+            result: The scan result for a single file.
         """
-        pass
+        self._results.append(result)
+        self._report_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self._report_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "meta": {"scanned_files": len(self._results)},
+                "results": [
+                    {
+                        "file_name": item.file_name,
+                        "passed": item.passed,
+                        "whitelisted": item.whitelisted,
+                        "reason": item.reason.value if item.reason else None,
+                        "details": item.details,
+                        "sha256": item.sha256,
+                        "vt_link": item.vt_link,
+                        "flagged_engines": item.flagged_engines,
+                        "engine_threats": item.engine_threats,
+                        "sandbox_flags": item.sandbox_flags,
+                    }
+                    for item in self._results
+                ],
+            }, f, indent=2)
 
     def on_complete(self, results: list[ScanResult], meta: dict[str, Any]) -> None:
-        """Write a JSON report file with all scan results.
-
-        Only writes to disk when at least one scan has failed.
-
-        Args:
-            results: All scan results from the pipeline run.
-            meta: Top-level metadata (e.g. file count).
-        """
-        if not any(not r.passed for r in results):
-            return
-        self._report_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "meta": meta,
-            "results": [
-                {
-                    "file_name": r.file_name,
-                    "passed": r.passed,
-                    "whitelisted": r.whitelisted,
-                    "reason": r.reason.value if r.reason else None,
-                    "details": r.details,
-                    "sha256": r.sha256,
-                    "vt_link": r.vt_link,
-                    "flagged_engines": r.flagged_engines,
-                    "engine_threats": r.engine_threats,
-                    "sandbox_flags": r.sandbox_flags,
-                }
-                for r in results
-            ],
-        }
-        with open(self._report_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2)
+        """No-op - the last ``on_progress`` already wrote the final state."""
 
 
 class CompositeReporter(ResultReporter):

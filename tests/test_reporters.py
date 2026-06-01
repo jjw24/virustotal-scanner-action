@@ -149,12 +149,15 @@ class TestGitHubActionReporter:
 
 
 class TestJsonReportWriter:
-    def test_no_failures_writes_nothing(self, tmp_path):
+    def test_writes_all_results(self, tmp_path):
         path = tmp_path / "report.json"
         writer = JsonReportWriter(path)
         r = ScanResult(file_name="/a/file.zip", passed=True, sha256="a" * 64)
-        writer.on_complete([r], {})
-        assert not path.is_file()
+        writer.on_progress(r)
+        assert path.is_file()
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert len(data["results"]) == 1
+        assert data["results"][0]["passed"] is True
 
     def test_writes_failures(self, tmp_path):
         path = tmp_path / "report.json"
@@ -166,11 +169,25 @@ class TestJsonReportWriter:
             reason=FailReason.DETECTION,
             details="malicious=1",
         )
-        writer.on_complete([r], {})
+        writer.on_progress(r)
         assert path.is_file()
         data = json.loads(path.read_text(encoding="utf-8"))
         assert len(data["results"]) == 1
         assert data["results"][0]["passed"] is False
+
+    def test_incremental_write(self, tmp_path):
+        path = tmp_path / "report.json"
+        writer = JsonReportWriter(path)
+        r1 = ScanResult(file_name="/a.zip", passed=True, sha256="a" * 64)
+        r2 = ScanResult(file_name="/b.zip", passed=False, sha256="b" * 64, reason=FailReason.DETECTION)
+        writer.on_progress(r1)
+        writer.on_progress(r2)
+        writer.on_complete([r1, r2], {"scanned_files": 2})
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data["meta"]["file_count"] == 2
+        assert len(data["results"]) == 2
+        assert data["results"][0]["passed"] is True
+        assert data["results"][1]["passed"] is False
 
 
 class TestCompositeReporter:
