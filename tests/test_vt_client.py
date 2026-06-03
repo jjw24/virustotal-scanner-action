@@ -249,9 +249,10 @@ class TestVTClient(unittest.TestCase):
             }
         }
         with patch.object(self.client, "upload_file") as mock_uf:
-            stats, sha, _ = self.client.scan_file(Path("/fake/path"))
+            stats, sha, _, source = self.client.scan_file(Path("/fake/path"))
         assert stats == {"malicious": 0, "suspicious": 0}
         assert sha == "abc"
+        assert source == "report"
         mock_uf.assert_not_called()
 
     @patch.object(VTClient, "get_file_report")
@@ -268,6 +269,7 @@ class TestVTClient(unittest.TestCase):
         }
         with patch.object(self.client, "upload_file", return_value="id-456"):
             with patch.object(self.client, "wait_for_analysis", return_value=analysis_data):
-                stats, sha, _ = self.client.scan_file(Path("/fake/path"))
+                stats, sha, _, source = self.client.scan_file(Path("/fake/path"))
         assert stats == {"malicious": 1, "suspicious": 0}
         assert sha == "abc"
+        assert source == "upload"

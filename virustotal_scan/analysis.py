@@ -106,7 +106,7 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
         step="upload",
     )
     try:
-        stats, file_sha, analysis = vt_client.scan_file(file_path)
+        stats, file_sha, analysis, source = vt_client.scan_file(file_path)
         result.sha256 = file_sha
         result.vt_link = f"https://www.virustotal.com/gui/file/{file_sha}/detection"
         result.flagged_engines = flagged_engine_names(analysis)
@@ -125,15 +125,15 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
         if fail_reason:
             result.reason = fail_reason
             result.details = f"malicious={stats.get('malicious', 0)} suspicious={stats.get('suspicious', 0)}"
-            result.step = "done"
+            result.step = source
         elif result.sandbox_flags:
             result.passed = False
             result.reason = FailReason.DETECTION
             result.details = f"Sandbox flags: {', '.join(result.sandbox_flags)}"
-            result.step = "done"
+            result.step = source
         else:
             result.passed = True
-            result.step = "done"
+            result.step = source
     except TimeoutError as e:
         result.reason = FailReason.ANALYSIS_TIMEOUT
         result.details = str(e)

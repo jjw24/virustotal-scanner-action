@@ -243,7 +243,7 @@ class VTClient:
                     sandbox_verdicts = self._poll_sandbox_verdicts(sha)
                 if sandbox_verdicts:
                     analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
-                return stats, sha, analysis
+                return stats, sha, analysis, "report"
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code != 404:
                 raise
@@ -255,4 +255,4 @@ class VTClient:
         sandbox_verdicts = self._poll_sandbox_verdicts(sha)
         if sandbox_verdicts:
             analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
-        return stats, sha, analysis
+        return stats, sha, analysis, "upload"

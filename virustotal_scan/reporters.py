@@ -45,7 +45,9 @@ class ConsoleReporter(ResultReporter):
         if result.whitelisted:
             status = "PASS(whitelisted)"
         elif result.step == "cache":
-            status = "PASS(cache)"
+            status = "PASS(cache_file)" if result.passed else "FAIL(cache_file)"
+        elif result.step == "report":
+            status = "PASS(cache_report)" if result.passed else "FAIL(cache_report)"
         elif result.passed:
             status = "PASS"
         else:

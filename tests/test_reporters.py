@@ -45,7 +45,33 @@ class TestConsoleReporter:
         )
         reporter.on_progress(r)
         captured = capsys.readouterr()
-        assert "PASS(cache)" in captured.out
+        assert "PASS(cache_file)" in captured.out
+
+    def test_report_progress_pass(self, capsys):
+        reporter = ConsoleReporter()
+        r = ScanResult(
+            file_name="/e/file.zip",
+            passed=True,
+            sha256="a" * 64,
+            step="report",
+            elapsed_sec=0.0,
+        )
+        reporter.on_progress(r)
+        captured = capsys.readouterr()
+        assert "PASS(cache_report)" in captured.out
+
+    def test_report_progress_fail(self, capsys):
+        reporter = ConsoleReporter()
+        r = ScanResult(
+            file_name="/f/file.zip",
+            passed=False,
+            sha256="a" * 64,
+            step="report",
+            elapsed_sec=0.0,
+        )
+        reporter.on_progress(r)
+        captured = capsys.readouterr()
+        assert "FAIL(cache_report)" in captured.out
 
     def test_whitelisted_progress(self, capsys):
         reporter = ConsoleReporter()
