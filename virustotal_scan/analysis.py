@@ -78,7 +78,7 @@ def evaluate_stats(stats: dict[str, Any]) -> Optional[FailReason]:
     return None
 
 
-def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
+def scan_file_vt(vt_client: VTClient, file_path: Path, no_cache: bool = False) -> ScanResult:
     """Run the full scan pipeline for a single file and produce a result.
 
     Responsibility chain:
@@ -94,6 +94,8 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
     Args:
         vt_client: An initialised VTClient instance.
         file_path: Path to the file to scan.
+        no_cache: If True, skip the existing-report lookup and always
+            upload the file.
 
     Returns:
         A ScanResult populated with the scan outcome, reason, details,
@@ -106,7 +108,7 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
         step="upload",
     )
     try:
-        stats, file_sha, analysis, source = vt_client.scan_file(file_path)
+        stats, file_sha, analysis, source = vt_client.scan_file(file_path, no_cache=no_cache)
         result.sha256 = file_sha
         result.vt_link = f"https://www.virustotal.com/gui/file/{file_sha}/detection"
         result.flagged_engines = flagged_engine_names(analysis)

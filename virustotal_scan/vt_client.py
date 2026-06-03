@@ -143,9 +143,7 @@ class VTClient:
         resp = self._request("GET", f"/files/{sha256}")
         return resp.json()
 
-    def _poll_sandbox_verdicts(
-        self, sha256: str, max_attempts: int = 3, poll_interval: float = 15.0
-    ) -> dict[str, Any]:
+    def _poll_sandbox_verdicts(self, sha256: str, max_attempts: int = 3, poll_interval: float = 15.0) -> dict[str, Any]:
         """Poll the file report until sandbox verdicts are available.
 
         Sandbox analysis runs asynchronously after upload, so we poll
@@ -163,11 +161,7 @@ class VTClient:
         for attempt in range(max_attempts):
             try:
                 file_report = self.get_file_report(sha256)
-                sandbox_verdicts = (
-                    file_report.get("data", {})
-                    .get("attributes", {})
-                    .get("sandbox_verdicts", {})
-                )
+                sandbox_verdicts = file_report.get("data", {}).get("attributes", {}).get("sandbox_verdicts", {})
                 if sandbox_verdicts:
                     return sandbox_verdicts
             except Exception:
@@ -204,49 +198,50 @@ class VTClient:
             time.sleep(min(30, self._interval))
         raise TimeoutError(f"polls={polls} last_status={status}")
 
-    def scan_file(self, file_path: Path) -> tuple[dict[str, Any], str, dict[str, Any]]:
+    def scan_file(self, file_path: Path, no_cache: bool = False) -> tuple[dict[str, Any], str, dict[str, Any], str]:
         """Orchestrate a full scan of a file against VirusTotal.
 
         Responsibility:
           1. Compute the file's SHA-256 hash locally.
-          2. Query the VT API for an existing report- if the file has
-             already been scanned, return the cached stats and results
-             without uploading again (avoids quota waste).
-          3. On a cache miss (HTTP 404), upload the file, poll the
-             analysis endpoint until completion, and return the fresh
-             results.
+          2. Unless ``no_cache`` is True, query the VT API for an existing
+             report — if the file has already been scanned, return the
+             cached stats and results without uploading again (avoids quota
+             waste).
+          3. When no report exists or ``no_cache`` is True,
+             upload the file, poll the analysis endpoint until completion,
+             and return the fresh results.
           4. Poll for sandbox verdicts (async) over 3 attempts and at 15 second interval,
              return with or without result on final attempt.
 
         Args:
             file_path: Path to the file to scan.
+            no_cache: If True, skip the existing-report lookup and always
+                upload the file.
 
         Returns:
-            A tuple of ``(stats_dict, sha256_hex, analysis_data)``
-            containing the detection counts, the file hash, and the
-            full analysis response from the VT API.
+            A tuple of ``(stats_dict, sha256_hex, analysis_data, source)``
+            containing the detection counts, the file hash, the full
+            analysis response from the VT API, and the source indicator
+            (``"report"`` or ``"upload"``).
         """
         sha = sha256_file(file_path)
 
-        try:
-            file_report = self.get_file_report(sha)
-            last_analysis = file_report.get("data", {}).get("attributes", {}).get("last_analysis_results", {})
-            stats = file_report.get("data", {}).get("attributes", {}).get("last_analysis_stats", {}) or {}
-            if stats:
-                analysis = {"attributes": {"results": last_analysis, "stats": stats}}
-                sandbox_verdicts = (
-                    file_report.get("data", {})
-                    .get("attributes", {})
-                    .get("sandbox_verdicts", {})
-                )
-                if not sandbox_verdicts:
-                    sandbox_verdicts = self._poll_sandbox_verdicts(sha)
-                if sandbox_verdicts:
-                    analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
-                return stats, sha, analysis, "report"
-        except requests.HTTPError as e:
-            if e.response is not None and e.response.status_code != 404:
-                raise
+        if not no_cache:
+            try:
+                file_report = self.get_file_report(sha)
+                last_analysis = file_report.get("data", {}).get("attributes", {}).get("last_analysis_results", {})
+                stats = file_report.get("data", {}).get("attributes", {}).get("last_analysis_stats", {}) or {}
+                if stats:
+                    analysis = {"attributes": {"results": last_analysis, "stats": stats}}
+                    sandbox_verdicts = file_report.get("data", {}).get("attributes", {}).get("sandbox_verdicts", {})
+                    if not sandbox_verdicts:
+                        sandbox_verdicts = self._poll_sandbox_verdicts(sha)
+                    if sandbox_verdicts:
+                        analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
+                    return stats, sha, analysis, "report"
+            except requests.HTTPError as e:
+                if e.response is not None and e.response.status_code != 404:
+                    raise
 
         analysis_id = self.upload_file(file_path)
         analysis = self.wait_for_analysis(analysis_id)

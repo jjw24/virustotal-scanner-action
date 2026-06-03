@@ -52,7 +52,7 @@ class TestScanPipeline:
 
         monkeypatch.setattr(pipeline_mod, "sha256_file", lambda p: "a" * 64)
 
-        def fake_scan(vt, path):
+        def fake_scan(vt, path, no_cache=False):
             return ScanResult(
                 file_name=str(path),
                 passed=True,
@@ -82,7 +82,7 @@ class TestScanPipeline:
 
         monkeypatch.setattr(pipeline_mod, "sha256_file", lambda p: "b" * 64)
 
-        def fake_scan(vt, path):
+        def fake_scan(vt, path, no_cache=False):
             return ScanResult(
                 file_name=str(path),
                 passed=False,

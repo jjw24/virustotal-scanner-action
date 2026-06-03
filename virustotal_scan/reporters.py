@@ -153,24 +153,28 @@ class JsonReportWriter(ResultReporter):
         self._results.append(result)
         self._report_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self._report_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "meta": {"scanned_files": len(self._results)},
-                "results": [
-                    {
-                        "file_name": item.file_name,
-                        "passed": item.passed,
-                        "whitelisted": item.whitelisted,
-                        "reason": item.reason.value if item.reason else None,
-                        "details": item.details,
-                        "sha256": item.sha256,
-                        "vt_link": item.vt_link,
-                        "flagged_engines": item.flagged_engines,
-                        "engine_threats": item.engine_threats,
-                        "sandbox_flags": item.sandbox_flags,
-                    }
-                    for item in self._results
-                ],
-            }, f, indent=2)
+            json.dump(
+                {
+                    "meta": {"scanned_files": len(self._results)},
+                    "results": [
+                        {
+                            "file_name": item.file_name,
+                            "passed": item.passed,
+                            "whitelisted": item.whitelisted,
+                            "reason": item.reason.value if item.reason else None,
+                            "details": item.details,
+                            "sha256": item.sha256,
+                            "vt_link": item.vt_link,
+                            "flagged_engines": item.flagged_engines,
+                            "engine_threats": item.engine_threats,
+                            "sandbox_flags": item.sandbox_flags,
+                        }
+                        for item in self._results
+                    ],
+                },
+                f,
+                indent=2,
+            )
 
     def on_complete(self, results: list[ScanResult], meta: dict[str, Any]) -> None:
         """No-op - the last ``on_progress`` already wrote the final state."""

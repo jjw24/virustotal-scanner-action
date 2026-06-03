@@ -131,7 +131,7 @@ class ScanPipeline:
                 self._reporter.on_progress(r)
                 continue
 
-            r = scan_file_vt(vt, file_path)
+            r = scan_file_vt(vt, file_path, no_cache=self._no_cache)
 
             # sha256 is only set by scan_file_vt on a successful response;
             # on exceptions (timeout, API error, etc.) it stays empty, so
