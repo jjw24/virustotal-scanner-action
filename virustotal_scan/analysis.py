@@ -84,7 +84,7 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
     Responsibility chain:
       1. Upload the file to VirusTotal via the VT client.
       2. Check analysis stats to decide pass/fail (via :func:`evaluate_stats`).
-      3. Poll for sandbox verdicts and append any flags.
+      3. Inspect sandbox verdicts embedded in the analysis dict and append any flags.
       4. Populate the :class:`ScanResult` with reason, details, and metadata.
       5. Catch and map any request/network/timeout errors to the appropriate
          ``FailReason`` so the pipeline can continue with remaining files.
@@ -114,14 +114,7 @@ def scan_file_vt(vt_client: VTClient, file_path: Path) -> ScanResult:
         fail_reason = evaluate_stats(stats)
 
         try:
-            sandbox_verdicts = {}
-            for attempt in range(3):
-                file_report = vt_client.get_file_report(file_sha)
-                sandbox_verdicts = file_report.get("data", {}).get("attributes", {}).get("sandbox_verdicts", {})
-                if sandbox_verdicts:
-                    break
-                time.sleep(15)
-
+            sandbox_verdicts = analysis.get("attributes", {}).get("sandbox_verdicts", {})
             for sandbox_name, verdict in sandbox_verdicts.items():
                 verdict_category = verdict.get("category", "")
                 if verdict_category not in ("harmless", "undetected"):

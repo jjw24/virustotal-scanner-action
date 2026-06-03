@@ -143,6 +143,39 @@ class VTClient:
         resp = self._request("GET", f"/files/{sha256}")
         return resp.json()
 
+    def _poll_sandbox_verdicts(
+        self, sha256: str, max_attempts: int = 3, poll_interval: float = 15.0
+    ) -> dict[str, Any]:
+        """Poll the file report until sandbox verdicts are available.
+
+        Sandbox analysis runs asynchronously after upload, so we poll
+        the file report endpoint in a short loop.  Exceptions are
+        silently swallowed so callers always get a dict (possibly empty).
+
+        Args:
+            sha256: The SHA-256 hash of the file.
+            max_attempts: How many times to poll before giving up.
+            poll_interval: Seconds to wait between attempts.
+
+        Returns:
+            The sandbox verdicts dict, or ``{}`` if none were found.
+        """
+        for attempt in range(max_attempts):
+            try:
+                file_report = self.get_file_report(sha256)
+                sandbox_verdicts = (
+                    file_report.get("data", {})
+                    .get("attributes", {})
+                    .get("sandbox_verdicts", {})
+                )
+                if sandbox_verdicts:
+                    return sandbox_verdicts
+            except Exception:
+                pass
+            if attempt < max_attempts - 1:
+                time.sleep(poll_interval)
+        return {}
+
     def wait_for_analysis(self, analysis_id: str) -> dict[str, Any]:
         """Poll the analysis endpoint until the analysis completes.
 
@@ -182,6 +215,8 @@ class VTClient:
           3. On a cache miss (HTTP 404), upload the file, poll the
              analysis endpoint until completion, and return the fresh
              results.
+          4. Poll for sandbox verdicts (async) over 3 attempts and at 15 second interval,
+             return with or without result on final attempt.
 
         Args:
             file_path: Path to the file to scan.
@@ -199,6 +234,15 @@ class VTClient:
             stats = file_report.get("data", {}).get("attributes", {}).get("last_analysis_stats", {}) or {}
             if stats:
                 analysis = {"attributes": {"results": last_analysis, "stats": stats}}
+                sandbox_verdicts = (
+                    file_report.get("data", {})
+                    .get("attributes", {})
+                    .get("sandbox_verdicts", {})
+                )
+                if not sandbox_verdicts:
+                    sandbox_verdicts = self._poll_sandbox_verdicts(sha)
+                if sandbox_verdicts:
+                    analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
                 return stats, sha, analysis
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code != 404:
@@ -208,4 +252,7 @@ class VTClient:
         analysis = self.wait_for_analysis(analysis_id)
         stats = analysis["attributes"].get("stats") or {}
         sha = analysis.get("meta", {}).get("file_info", {}).get("sha256") or sha
+        sandbox_verdicts = self._poll_sandbox_verdicts(sha)
+        if sandbox_verdicts:
+            analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
         return stats, sha, analysis
