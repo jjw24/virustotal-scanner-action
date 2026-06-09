@@ -37,6 +37,10 @@ inputs:
     description: 'Timeout in seconds for file uploads to VT'
     required: false
     default: '120'
+  max-report-age-days:
+    description: 'Maximum age of a cached VT report in days before forcing a fresh upload (0 = never discard)'
+    required: false
+    default: '30'
 
 outputs:
   exit-code:

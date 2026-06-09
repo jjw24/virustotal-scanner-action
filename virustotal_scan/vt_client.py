@@ -232,13 +232,16 @@ class VTClient:
                 last_analysis = file_report.get("data", {}).get("attributes", {}).get("last_analysis_results", {})
                 stats = file_report.get("data", {}).get("attributes", {}).get("last_analysis_stats", {}) or {}
                 if stats:
-                    analysis = {"attributes": {"results": last_analysis, "stats": stats}}
-                    sandbox_verdicts = file_report.get("data", {}).get("attributes", {}).get("sandbox_verdicts", {})
-                    if not sandbox_verdicts:
-                        sandbox_verdicts = self._poll_sandbox_verdicts(sha)
-                    if sandbox_verdicts:
-                        analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
-                    return stats, sha, analysis, "report"
+                    max_age_days = env_int("VT_MAX_REPORT_AGE_DAYS", 30)
+                    last_analysis_date = file_report["data"]["attributes"]["last_analysis_date"]
+                    if max_age_days == 0 or time.time() - last_analysis_date <= max_age_days * 86400:  # seconds per day
+                        analysis = {"attributes": {"results": last_analysis, "stats": stats}}
+                        sandbox_verdicts = file_report.get("data", {}).get("attributes", {}).get("sandbox_verdicts", {})
+                        if not sandbox_verdicts:
+                            sandbox_verdicts = self._poll_sandbox_verdicts(sha)
+                        if sandbox_verdicts:
+                            analysis["attributes"]["sandbox_verdicts"] = sandbox_verdicts
+                        return stats, sha, analysis, "report"
             except requests.HTTPError as e:
                 if e.response is not None and e.response.status_code != 404:
                     raise

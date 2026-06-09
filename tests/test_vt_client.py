@@ -1,3 +1,4 @@
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -245,6 +246,57 @@ class TestVTClient(unittest.TestCase):
                 "attributes": {
                     "last_analysis_stats": {"malicious": 0, "suspicious": 0},
                     "last_analysis_results": {"EngineA": {"category": "undetected"}},
+                    "last_analysis_date": time.time() - 86400,  # 1 day old
+                }
+            }
+        }
+        with patch.object(self.client, "upload_file") as mock_uf:
+            stats, sha, _, source = self.client.scan_file(Path("/fake/path"))
+        assert stats == {"malicious": 0, "suspicious": 0}
+        assert sha == "abc"
+        assert source == "report"
+        mock_uf.assert_not_called()
+
+    @patch.object(VTClient, "get_file_report")
+    @patch("virustotal_scan.vt_client.sha256_file", return_value="abc")
+    @patch("virustotal_scan.vt_client.env_int", return_value=30)
+    @patch("time.sleep")
+    def test_scan_uploads_when_vt_cached_report_is_too_old(self, mock_sleep, mock_env_int, mock_sha256, mock_gfr):
+        now = time.time()
+        mock_gfr.return_value = {
+            "data": {
+                "attributes": {
+                    "last_analysis_stats": {"malicious": 0, "suspicious": 0},
+                    "last_analysis_results": {"EngineA": {"category": "undetected"}},
+                    "last_analysis_date": now - 86400 * 60,  # 60 days old
+                }
+            }
+        }
+        analysis_data = {
+            "attributes": {
+                "stats": {"malicious": 1, "suspicious": 0},
+            },
+            "meta": {"file_info": {"sha256": "abc"}},
+        }
+        with patch.object(self.client, "upload_file", return_value="id-456"):
+            with patch.object(self.client, "wait_for_analysis", return_value=analysis_data):
+                stats, sha, _, source = self.client.scan_file(Path("/fake/path"))
+        assert stats == {"malicious": 1, "suspicious": 0}
+        assert sha == "abc"
+        assert source == "upload"
+
+    @patch.object(VTClient, "get_file_report")
+    @patch("virustotal_scan.vt_client.sha256_file", return_value="abc")
+    @patch("virustotal_scan.vt_client.env_int", return_value=0)
+    @patch("time.sleep")
+    def test_scan_uses_vt_cached_report_when_max_age_is_zero(self, mock_sleep, mock_env_int, mock_sha256, mock_gfr):
+        now = time.time()
+        mock_gfr.return_value = {
+            "data": {
+                "attributes": {
+                    "last_analysis_stats": {"malicious": 0, "suspicious": 0},
+                    "last_analysis_results": {"EngineA": {"category": "undetected"}},
+                    "last_analysis_date": now - 86400 * 365,  # 1 year old
                 }
             }
         }
