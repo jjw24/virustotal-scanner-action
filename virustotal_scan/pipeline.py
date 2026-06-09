@@ -19,9 +19,11 @@ Owns the top-level control flow that drives per-file scanning via
 - Return exit code 0 (all passed) or 1 (any failed).
 """
 
+import time
 from pathlib import Path
 from typing import Any
 
+from virustotal_scan._config import env_int
 from virustotal_scan.analysis import scan_file_vt
 from virustotal_scan.cache import CacheEntry, FileCacheProvider, load_whitelist, matches_whitelist
 from virustotal_scan.file_utils import sha256_file
@@ -115,21 +117,28 @@ class ScanPipeline:
             cached = cache.get(cache_key)
 
             if not self._no_cache and cached and cached.sha256 == sha and cached.passed:
-                r = ScanResult(
-                    file_name=str(file_path),
-                    passed=True,
-                    sha256=sha,
-                    vt_link=cached.vt_link,
-                    step="cache",
-                    elapsed_sec=0.0,
-                    engine_threats=cached.engine_threats,
-                    sandbox_flags=cached.sandbox_flags,
+                max_age_days = env_int("VT_MAX_REPORT_AGE_DAYS", 30)
+                use_cache = (
+                    max_age_days == 0
+                    or cached.cached_at == 0
+                    or time.time() - cached.cached_at <= max_age_days * 86400  # seconds per day
                 )
-                if matches_whitelist(r, whitelist):
-                    r.whitelisted = True
-                results.append(r)
-                self._reporter.on_progress(r)
-                continue
+                if use_cache:
+                    r = ScanResult(
+                        file_name=str(file_path),
+                        passed=True,
+                        sha256=sha,
+                        vt_link=cached.vt_link,
+                        step="cache",
+                        elapsed_sec=0.0,
+                        engine_threats=cached.engine_threats,
+                        sandbox_flags=cached.sandbox_flags,
+                    )
+                    if matches_whitelist(r, whitelist):
+                        r.whitelisted = True
+                    results.append(r)
+                    self._reporter.on_progress(r)
+                    continue
 
             r = scan_file_vt(vt, file_path, no_cache=self._no_cache)
 
@@ -155,6 +164,7 @@ class ScanPipeline:
                     details=r.details,
                     engine_threats=r.engine_threats,
                     sandbox_flags=r.sandbox_flags,
+                    cached_at=time.time(),
                 )
 
             self._cache.save(cache)

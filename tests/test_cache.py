@@ -28,6 +28,7 @@ class TestCacheEntryDefaults:
         assert entry.details == ""
         assert entry.engine_threats == {}
         assert entry.sandbox_flags == []
+        assert entry.cached_at == 0.0
 
     def test_custom_values(self):
         entry = CacheEntry(
@@ -38,6 +39,7 @@ class TestCacheEntryDefaults:
             details="some details",
             engine_threats={"EngineA": "Trojan.Generic", "EngineB": "Malware"},
             sandbox_flags=["flag1", "flag2"],
+            cached_at=1234567890.0,
         )
         assert entry.sha256 == "abc123"
         assert entry.passed is True
@@ -46,6 +48,7 @@ class TestCacheEntryDefaults:
         assert entry.details == "some details"
         assert entry.engine_threats == {"EngineA": "Trojan.Generic", "EngineB": "Malware"}
         assert entry.sandbox_flags == ["flag1", "flag2"]
+        assert entry.cached_at == 1234567890.0
 
 
 class TestFileCacheProvider:

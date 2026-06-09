@@ -1,5 +1,6 @@
 """Tests for the scan pipeline orchestration."""
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -107,3 +108,76 @@ class TestScanPipeline:
         assert rc == 1
         assert len(reporter.progress_calls) == 1
         assert reporter.progress_calls[0].passed is False
+
+    def test_cache_hit_with_fresh_entry(self, tmp_path, monkeypatch):
+        file_path = tmp_path / "fresh.zip"
+        file_path.write_text("fresh content")
+
+        import virustotal_scan.pipeline as pipeline_mod
+
+        monkeypatch.setattr(pipeline_mod, "sha256_file", lambda p: "a" * 64)
+
+        cache_data = {
+            "fresh.zip": CacheEntry(
+                sha256="a" * 64,
+                passed=True,
+                vt_link="https://example.com",
+                cached_at=time.time() - 86400 * 5,
+            )
+        }
+        reporter = FakeReporter()
+        pipe = ScanPipeline(
+            file_paths=[file_path],
+            reporter=reporter,
+            cache=FakeCache(cache_data),
+            whitelist_path=tmp_path / "whitelist.json",
+            api_key="test-key",
+        )
+        rc = pipe.execute()
+        assert rc == 0
+        assert len(reporter.progress_calls) == 1
+        assert reporter.progress_calls[0].step == "cache"
+
+    def test_cache_skipped_when_stale(self, tmp_path, monkeypatch):
+        file_path = tmp_path / "stale.zip"
+        file_path.write_text("stale content")
+
+        import virustotal_scan.pipeline as pipeline_mod
+
+        monkeypatch.setattr(pipeline_mod, "sha256_file", lambda p: "b" * 64)
+
+        cache_data = {
+            "stale.zip": CacheEntry(
+                sha256="b" * 64,
+                passed=True,
+                vt_link="https://example.com",
+                cached_at=time.time() - 86400 * 60,
+            )
+        }
+
+        def fake_scan(vt, path, no_cache=False):
+            return ScanResult(
+                file_name=str(path),
+                passed=True,
+                sha256="b" * 64,
+                vt_link="https://example.com/vt-result",
+                step="done",
+                elapsed_sec=0.1,
+            )
+
+        monkeypatch.setattr(pipeline_mod, "scan_file_vt", fake_scan)
+
+        reporter = FakeReporter()
+        pipe = ScanPipeline(
+            file_paths=[file_path],
+            reporter=reporter,
+            cache=FakeCache(cache_data),
+            whitelist_path=tmp_path / "whitelist.json",
+            api_key="test-key",
+        )
+        rc = pipe.execute()
+        assert rc == 0
+        assert len(reporter.progress_calls) == 1
+        assert reporter.progress_calls[0].step == "done"
+
+

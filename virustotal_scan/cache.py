@@ -29,6 +29,7 @@ class CacheEntry:
     details: str = ""
     engine_threats: dict[str, str] = field(default_factory=dict)
     sandbox_flags: list[str] = field(default_factory=list)
+    cached_at: float = 0.0
 
 
 class FileCacheProvider:
