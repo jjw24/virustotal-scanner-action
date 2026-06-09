@@ -57,7 +57,7 @@ The step fails when any file is detected. No additional `exit 1` checks needed.
 ```yaml
 name: VirusTotal scan
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   scan:
@@ -65,8 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: owner/virustotal-scanner-action@v1
-        id: vt
+      - uses: jjw24/virustotal-scanner-action@v1
         with:
           api-key: ${{ secrets.VT_API_KEY }}
           scan-paths: |
@@ -80,6 +79,15 @@ jobs:
           analysis-poll-timeout-sec: 600
           download-timeout-sec: 120
           max-report-age-days: 30
+
+      # Upload cache and report files as downloadable artifacts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vt-scanner-files
+          path: |
+            vt_cache.json
+            vt_report.json
 ```
 
 ## Whitelisting
