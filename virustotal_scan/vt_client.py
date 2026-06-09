@@ -204,7 +204,7 @@ class VTClient:
         Responsibility:
           1. Compute the file's SHA-256 hash locally.
           2. Unless ``no_cache`` is True, query the VT API for an existing
-             report — if the file has already been scanned, return the
+             report- if the file has already been scanned, return the
              cached stats and results without uploading again (avoids quota
              waste).
           3. When no report exists or ``no_cache`` is True,
