@@ -94,17 +94,14 @@ class GitHubActionReporter(ResultReporter):
 
     def __init__(self) -> None:
         self._inner = ConsoleReporter()
-        self._files_open = False
+        print("::group::VirusTotal Scanner - Files")
 
     def on_progress(self, result: ScanResult) -> None:
-        """Open the "Files" group on first call, then delegate.
+        """Delegate to the inner console reporter.
 
         Args:
             result: The scan result for a single file.
         """
-        if not self._files_open:
-            print("::group::VirusTotal Scanner - Files")
-            self._files_open = True
         self._inner.on_progress(result)
 
     def on_complete(self, results: list[ScanResult], meta: dict[str, Any]) -> None:
@@ -114,8 +111,7 @@ class GitHubActionReporter(ResultReporter):
             results: All scan results from the pipeline run.
             meta: Top-level metadata (e.g. file count).
         """
-        if self._files_open:
-            print("::endgroup::")
+        print("::endgroup::")
         print("::group::VirusTotal Scanner - Summary")
         self._inner.on_complete(results, meta)
         print("::endgroup::")
