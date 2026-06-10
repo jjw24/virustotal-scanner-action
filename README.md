@@ -65,6 +65,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Restore VT cache from previous run (optional — speeds up repeat scans)
+      - uses: actions/cache/restore@v4
+        with:
+          path: vt_cache.json
+          key: vt-cache-${{ github.sha }}
+          restore-keys: vt-cache-
+
       - uses: jjw24/virustotal-scanner-action@v1
         with:
           api-key: ${{ secrets.VT_API_KEY }}
@@ -80,7 +87,14 @@ jobs:
           download-timeout-sec: 120
           max-report-age-days: 30
 
-      # Upload cache and report files as downloadable artifacts
+      # Save cache for next run
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: vt_cache.json
+          key: vt-cache-${{ github.sha }}
+
+      # Upload cache and report as downloadable artifacts
       - uses: actions/upload-artifact@v4
         if: always()
         with:
