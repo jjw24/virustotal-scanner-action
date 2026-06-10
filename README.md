@@ -52,6 +52,22 @@ The step fails when any file is detected. No additional `exit 1` checks needed.
 | `failed-count` | Number of files that failed the scan |
 | `total-count` | Total number of files scanned |
 
+Reference outputs from later steps using `${{ steps.<step-id>.outputs.<name> }}`:
+
+```yaml
+- uses: jjw24/virustotal-scanner-action@v1
+  id: vt-scan
+  with:
+    api-key: ${{ secrets.VT_API_KEY }}
+    scan-paths: ./files/
+
+- name: Show summary
+  run: |
+    echo "Passed: ${{ steps.vt-scan.outputs.passed-count }}"
+    echo "Failed: ${{ steps.vt-scan.outputs.failed-count }}"
+    echo "Total:  ${{ steps.vt-scan.outputs.total-count }}"
+```
+
 ## Example workflow
 
 ```yaml
