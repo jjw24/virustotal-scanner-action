@@ -45,19 +45,62 @@ inputs:
 outputs:
   exit-code:
     description: 'Pipeline exit code (0 = all passed, 1 = some failed)'
+    value: ${{ steps.scan.outputs.exit-code }}
   report-path:
     description: 'Path to the generated JSON report file'
+    value: ${{ steps.scan.outputs.report-path }}
   passed-count:
     description: 'Number of files that passed the scan'
+    value: ${{ steps.scan.outputs.passed-count }}
   failed-count:
     description: 'Number of files that failed the scan'
+    value: ${{ steps.scan.outputs.failed-count }}
   total-count:
     description: 'Total number of files scanned'
+    value: ${{ steps.scan.outputs.total-count }}
 
 branding:
   icon: 'shield'
   color: 'green'
 
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: 'composite'
+  steps:
+    - name: Install package
+      shell: bash
+      run: pip install -q "${{ github.action_path }}"
+
+    - name: Run VirusTotal scan
+      id: scan
+      shell: bash
+      env:
+        VT_API_KEY: ${{ inputs.api-key }}
+        VT_SCAN_PATHS: ${{ inputs.scan-paths }}
+        VT_NO_CACHE: ${{ inputs.no-cache }}
+        VT_CACHE_PATH: ${{ inputs.cache-path }}
+        VT_WHITELIST_PATH: ${{ inputs.whitelist-path }}
+        VT_REPORT_PATH: ${{ inputs.report-path }}
+        VT_REQUEST_INTERVAL_SEC: ${{ inputs.request-interval-sec }}
+        VT_ANALYSIS_POLL_TIMEOUT_SEC: ${{ inputs.analysis-poll-timeout-sec }}
+        VT_DOWNLOAD_TIMEOUT_SEC: ${{ inputs.download-timeout-sec }}
+        VT_MAX_REPORT_AGE_DAYS: ${{ inputs.max-report-age-days }}
+        USE_GITHUB_ACTION_REPORTER: 'true'
+      run: |
+        virustotal-scan
+        PY_EXIT=$?
+        REPORT_PATH="${{ inputs.report-path }}"
+        if [ -f "${REPORT_PATH}" ]; then
+          TOTAL=$(python3 -c "import json,sys; d=json.load(open('${REPORT_PATH}')); print(len(d.get('results',[])))" 2>/dev/null || echo "0")
+          PASSED=$(python3 -c "import json,sys; d=json.load(open('${REPORT_PATH}')); print(sum(1 for r in d.get('results',[]) if r.get('passed')))" 2>/dev/null || echo "0")
+          FAILED=$(python3 -c "import json,sys; d=json.load(open('${REPORT_PATH}')); print(sum(1 for r in d.get('results',[]) if not r.get('passed')))" 2>/dev/null || echo "0")
+        else
+          TOTAL="0"
+          PASSED="0"
+          FAILED="0"
+        fi
+        echo "exit-code=${PY_EXIT}" >> "${GITHUB_OUTPUT}"
+        echo "report-path=${REPORT_PATH}" >> "${GITHUB_OUTPUT}"
+        echo "passed-count=${PASSED}" >> "${GITHUB_OUTPUT}"
+        echo "failed-count=${FAILED}" >> "${GITHUB_OUTPUT}"
+        echo "total-count=${TOTAL}" >> "${GITHUB_OUTPUT}"
+        exit ${PY_EXIT}

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "virustotal-scan"
+version = "1.0.0"
+description = "VirusTotal scanner action"
+requires-python = ">=3.12"
+dependencies = [
+    "requests",
+    "tenacity",
+]
+
+[tool.setuptools.packages.find]
+include = ["virustotal_scan*"]
+
+[project.scripts]
+virustotal-scan = "virustotal_scan.cli:main"
