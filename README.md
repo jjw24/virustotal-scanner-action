@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Restore VT cache from previous run (optional — speeds up repeat scans)
+      # Restore VT cache from previous run (optional- speeds up repeat scans)
       - uses: actions/cache/restore@v4
         with:
           path: vt_cache.json

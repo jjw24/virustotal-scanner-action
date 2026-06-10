@@ -17,7 +17,7 @@ if [ "${GITHUB_ACTIONS}" = "true" ]; then
   export USE_GITHUB_ACTION_REPORTER=true
 fi
 
-python -m virustotal_scan
+python3 -m virustotal_scan
 PY_EXIT=$?
 
 REPORT_PATH="${VT_REPORT_PATH:-vt_report.json}"
