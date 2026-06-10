@@ -246,6 +246,7 @@ class VTClient:
                 if e.response is not None and e.response.status_code != 404:
                     raise
 
+        print(f"Uploading {file_path.name} to VirusTotal...")
         analysis_id = self.upload_file(file_path)
         analysis = self.wait_for_analysis(analysis_id)
         stats = analysis["attributes"].get("stats") or {}
