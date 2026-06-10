@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r /action/requirements.txt
 COPY virustotal_scan /action/virustotal_scan
 COPY entrypoint.sh /action/entrypoint.sh
 RUN chmod +x /action/entrypoint.sh
+RUN echo "blaaaaaah" # remove after testing
 
 WORKDIR /github/workspace
 ENTRYPOINT ["/action/entrypoint.sh"]
