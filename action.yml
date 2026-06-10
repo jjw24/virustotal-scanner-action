@@ -84,6 +84,7 @@ runs:
         VT_ANALYSIS_POLL_TIMEOUT_SEC: ${{ inputs.analysis-poll-timeout-sec }}
         VT_DOWNLOAD_TIMEOUT_SEC: ${{ inputs.download-timeout-sec }}
         VT_MAX_REPORT_AGE_DAYS: ${{ inputs.max-report-age-days }}
+        PYTHONUNBUFFERED: '1'
         USE_GITHUB_ACTION_REPORTER: 'true'
       run: |
         virustotal-scan
