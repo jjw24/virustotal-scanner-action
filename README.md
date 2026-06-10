@@ -55,18 +55,20 @@ The step fails when any file is detected. No additional `exit 1` checks needed.
 ## Example workflow
 
 ```yaml
-name: VirusTotal scan
+name: VirusTotal Scan
 
-on: [pull_request]
+on:
+  workflow_dispatch:
+  push:
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Restore VT cache from previous run (optional- speeds up repeat scans)
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: vt_cache.json
           key: vt-cache-${{ github.sha }}
@@ -88,20 +90,25 @@ jobs:
           max-report-age-days: 30
 
       # Save cache for next run
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: always()
         with:
           path: vt_cache.json
           key: vt-cache-${{ github.sha }}
 
-      # Upload cache and report as downloadable artifacts
-      - uses: actions/upload-artifact@v4
+      # Upload report file as raw viewable json
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: vt-scanner-files
-          path: |
-            vt_cache.json
-            vt_report.json
+          path: vt_report.json
+          archive: false
+
+      # Upload cache file as raw viewable json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          path: vt_cache.json
+          archive: false
 ```
 
 ## Whitelisting
