@@ -1,5 +1,5 @@
 name: 'VirusTotal Scanner Action'
-description: 'Scan files with VirusTotal, view results directly in your job output, and automatically pass or fail based on the scan outcome.'
+description: 'Scan files with VirusTotal, view results directly in job output, and automatically pass or fail based on the scan outcome.'
 author: 'Jeremy Wu'
 
 inputs:
