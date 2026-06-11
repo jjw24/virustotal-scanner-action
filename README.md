@@ -8,6 +8,8 @@ No need to visit VirusTotal website or writing custom pass/fail logic. Every sca
 
 **Premium API ready.** If you have a VirusTotal Premium API key, set a lower `request-interval-sec` (e.g. `"1"`) for faster scans. The action also respects `Retry-After` headers and uses exponential backoff, so it plays well at any tier without manual tuning.
 
+<img width="2388" height="972" alt="Image" src="https://github.com/user-attachments/assets/915e20da-8210-4a53-a0e9-64027b5e15a5" />
+
 ## Table of Contents
 
 - [Usage](#usage)
