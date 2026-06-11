@@ -179,5 +179,3 @@ class TestScanPipeline:
         assert rc == 0
         assert len(reporter.progress_calls) == 1
         assert reporter.progress_calls[0].step == "done"
-
-
