@@ -89,7 +89,7 @@ jobs:
       - uses: actions/cache/restore@v5
         with:
           path: vt_cache.json
-          key: vt-cache-${{ github.sha }}
+          key: vt-cache-restore-not-used
           restore-keys: vt-cache-
 
       - uses: jjw24/virustotal-scanner-action@v1
@@ -112,7 +112,7 @@ jobs:
         if: always()
         with:
           path: vt_cache.json
-          key: vt-cache-${{ github.sha }}
+          key: vt-cache-${{ hashFiles('vt_cache.json') }}
 
       # Upload report file as raw viewable json
       - uses: actions/upload-artifact@v7
